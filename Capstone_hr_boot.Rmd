@@ -1,0 +1,89 @@
+---
+title: "Capstone Portfolio"
+author: "Ziyuan Wang"
+date: 2021-03-16T21:13:14-05:00
+categories: ["R"]
+tags: ["R Markdown", "plot", "regression"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+library(boot)
+library(caret)
+library(survival)
+library(ggplot2)
+```
+
+# The Capstone Project
+Understanding the Relationship between Medicare-derived and WHI-adjudicated Colorectal Cancer Diagnosis
+
+# Background
+The project is sponsored by Women’s Health Initiative Clinical Coordinating Center (WHI) and Fred Hutchinson Cancer Research Center (FHCRC). We focus on evaluating the in-house Medicare algorithm’s prediction performance and identifying potential places that need improvements for this project. The primary objective is to identify factors that contribute to the predictive power of the Medicare algorithm. The secondary objective is to determine whether the hazard ratio of invasive colorectal cancer for the Hormone Trials participants who received hormone therapies compared to patients who were on placebo arms are comparable using WHI-adjudicated vs. Medicare algorithm-derived outcomes.
+
+# Checklists of Things Done
+
+- [x] Finished a statistical analysis plan
+- [x] Collaborated with sponsors on a weekly basis
+- [x] Learned SAS
+- [x] Learned how to deal with large datasets
+- [x] Implemented Bootstrapping methods
+- [x] Showcased the results at the departmental Capstone project presentation
+
+Some example code of the bootstrap method
+```{r boot, tidy=FALSE}
+addicts <- read.csv("~/Downloads/addicts.csv")
+
+compare.hr <- function(data, indices1, indices2) {
+test_index <- createDataPartition(data$event, times=1, p=0.5, list=FALSE)
+test_set <- data[test_index, ]
+train_set <- data[-test_index, ]
+  d1 <- test_set[indices1,]
+  d2 <- train_set[indices2,]
+  fit1 <- coxph(Surv(time, event)~clinic, data = d1)
+  fit2 <- coxph(Surv(time, event)~clinic, data = d2)
+  as.numeric(fit1$coefficient/fit2$coefficient)
+}
+# bootstrap w/100 replicas
+results <- boot(data=addicts, statistic = compare.hr, R=1000)
+plot(results)
+boot.ci(results, type="norm")
+```
+
+And the plot for our secondary analysis results
+```{r plot}
+whi.mat <- matrix(c("WHI",0.840, 0.490, 1.15,"CMS", 0.950, 0.680,1.21), nrow = 2, byrow = TRUE)
+colnames(whi.mat) <- c("Method", "mean","LowerCI","UpperCI")
+whidat <- data.frame(whi.mat)
+p1 <- ggplot(whidat, aes(x=Method,y= mean)) +
+  geom_point(shape = 21, size = 5, fill = "black") +
+  geom_errorbar(width = 0.1, aes(ymin = LowerCI, ymax = UpperCI)) + 
+  ggtitle("Comparing the hazard ratios obtained 
+          using two diagnosis method") +
+  ylab("Hazard ratios") +
+  theme_classic() +
+     theme(axis.title.y = element_text(size = 20),
+                 axis.text.x = element_text(size = 15),
+                 axis.text.y = element_text(size = 17),
+           plot.title  = element_text(size = 20))
+p1
+
+whi.RR <- matrix(c("WHI",-0.002, -0.007, 0.002,"CMS", -0.001, -0.008,0.006), nrow = 2, byrow = TRUE)
+colnames(whi.RR) <- c("Method", "mean","LowerCI","UpperCI")
+whiRR <- data.frame(whi.RR)
+whiRR$LowerCI <- as.numeric(whiRR$LowerCI)
+whiRR$UpperCI <- as.numeric(whiRR$UpperCI)
+whiRR$mean <- as.numeric(whiRR$mean)
+p2 <- ggplot(whiRR, aes(x=Method,y= mean)) +
+  geom_point(shape = 21, size = 5, fill = "black") +
+  geom_errorbar(width = 0.1, aes(ymin = LowerCI, ymax = UpperCI)) +
+  ggtitle("Comparing the risk differences obtained 
+          using two diagnosis method") +
+  xlab("Methods") +
+  ylab("Risk differences") +
+  theme_classic() +
+     theme(axis.title.y = element_text(size = 20),
+                 axis.text.x = element_text(size = 20),
+                 axis.text.y = element_text(size = 17),
+           plot.title  = element_text(size = 20))
+p2
+```
